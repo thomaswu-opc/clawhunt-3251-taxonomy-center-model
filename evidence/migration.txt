@@ -1,0 +1,117 @@
+$ alembic upgrade head --sql   # PostgreSQL 16 方言
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Generating static SQL
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+BEGIN;
+
+CREATE TABLE alembic_version (
+    version_num VARCHAR(32) NOT NULL, 
+    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
+);
+
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_taxonomy_center, taxonomy dict / tag / tag_history
+-- Running upgrade  -> 0001_taxonomy_center
+
+CREATE TABLE taxonomy_dict (
+    id UUID NOT NULL, 
+    code VARCHAR(64) NOT NULL, 
+    name VARCHAR(128) NOT NULL, 
+    description TEXT, 
+    allow_multi BOOLEAN DEFAULT true NOT NULL, 
+    max_depth INTEGER DEFAULT '3' NOT NULL, 
+    owner_role VARCHAR(64) DEFAULT 'knowledge_admin' NOT NULL, 
+    org_id UUID NOT NULL, 
+    site_id UUID, 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    created_by UUID, 
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    deleted_at TIMESTAMP WITH TIME ZONE, 
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_taxonomy_dict_code UNIQUE (org_id, code), 
+    CONSTRAINT ck_taxonomy_dict_max_depth CHECK (max_depth BETWEEN 1 AND 6)
+);
+
+CREATE INDEX ix_taxonomy_dict_org ON taxonomy_dict (org_id);
+
+CREATE TABLE taxonomy_tag (
+    id UUID NOT NULL, 
+    dict_id UUID NOT NULL, 
+    code VARCHAR(64) NOT NULL, 
+    name VARCHAR(128) NOT NULL, 
+    parent_id UUID, 
+    path VARCHAR(512) DEFAULT '' NOT NULL, 
+    level INTEGER DEFAULT '1' NOT NULL, 
+    aliases JSONB DEFAULT '[]' NOT NULL, 
+    definition TEXT, 
+    status VARCHAR(16) DEFAULT 'draft' NOT NULL, 
+    merged_into_id UUID, 
+    sort_order INTEGER DEFAULT '0' NOT NULL, 
+    version INTEGER DEFAULT '1' NOT NULL, 
+    org_id UUID NOT NULL, 
+    site_id UUID, 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    created_by UUID, 
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    deleted_at TIMESTAMP WITH TIME ZONE, 
+    PRIMARY KEY (id), 
+    CONSTRAINT uq_taxonomy_tag_dict_code UNIQUE (dict_id, code), 
+    CONSTRAINT ck_taxonomy_tag_level_positive CHECK (level >= 1), 
+    CONSTRAINT ck_taxonomy_tag_status CHECK (status IN ('draft','pending_review','active','deprecated','merged')), 
+    CONSTRAINT ck_taxonomy_tag_version_positive CHECK (version >= 1), 
+    FOREIGN KEY(dict_id) REFERENCES taxonomy_dict (id) ON DELETE CASCADE, 
+    FOREIGN KEY(parent_id) REFERENCES taxonomy_tag (id) ON DELETE SET NULL, 
+    FOREIGN KEY(merged_into_id) REFERENCES taxonomy_tag (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_taxonomy_tag_dict_status ON taxonomy_tag (dict_id, status);
+
+CREATE INDEX ix_taxonomy_tag_path ON taxonomy_tag (path);
+
+CREATE TABLE taxonomy_tag_history (
+    id BIGSERIAL NOT NULL, 
+    tag_id UUID NOT NULL, 
+    action VARCHAR(16) NOT NULL, 
+    version INTEGER NOT NULL, 
+    before JSONB, 
+    after JSONB, 
+    changed_by UUID, 
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    PRIMARY KEY (id), 
+    CONSTRAINT ck_taxonomy_tag_history_action CHECK (action IN ('create','update','deprecate','merge')), 
+    FOREIGN KEY(tag_id) REFERENCES taxonomy_tag (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_taxonomy_tag_history_tag ON taxonomy_tag_history (tag_id, changed_at);
+
+INSERT INTO alembic_version (version_num) VALUES ('0001_taxonomy_center') RETURNING alembic_version.version_num;
+
+COMMIT;
+
+
+$ alembic downgrade 0001_taxonomy_center:base --sql
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Generating static SQL
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+BEGIN;
+
+INFO  [alembic.runtime.migration] Running downgrade 0001_taxonomy_center -> , taxonomy dict / tag / tag_history
+-- Running downgrade 0001_taxonomy_center -> 
+
+DROP INDEX ix_taxonomy_tag_history_tag;
+
+DROP TABLE taxonomy_tag_history;
+
+DROP INDEX ix_taxonomy_tag_path;
+
+DROP INDEX ix_taxonomy_tag_dict_status;
+
+DROP TABLE taxonomy_tag;
+
+DROP INDEX ix_taxonomy_dict_org;
+
+DROP TABLE taxonomy_dict;
+
+DELETE FROM alembic_version WHERE alembic_version.version_num = '0001_taxonomy_center';
+
+COMMIT;
+

@@ -1,0 +1,17 @@
+$ python -m unittest discover -s tests -t . -v
+# 2026-11-25T18:32:13+08:00
+test_ac1_upgrade_head_and_downgrade_minus_one (tests.test_acceptance.AC1MigrationUpDown.test_ac1_upgrade_head_and_downgrade_minus_one) ... E:\ClawHunt\acceptance\2824\work\.venv\Lib\site-packages\alembic\config.py:604: DeprecationWarning: No path_separator found in configuration; falling back to legacy splitting on spaces, commas, and colons for prepend_sys_path.  Consider adding path_separator=os to Alembic config.
+  util.warn_deprecated(
+ok
+test_ac2_same_code_in_other_dict_allowed (tests.test_acceptance.AC2DuplicateCodeRejected.test_ac2_same_code_in_other_dict_allowed) ... ok
+test_ac2_same_dict_duplicate_code_fails (tests.test_acceptance.AC2DuplicateCodeRejected.test_ac2_same_dict_duplicate_code_fails) ... ok
+test_ac3_level_over_max_depth_fails (tests.test_acceptance.AC3DepthExceeded.test_ac3_level_over_max_depth_fails) ... ok
+test_ac3_path_matches_level (tests.test_acceptance.AC3DepthExceeded.test_ac3_path_matches_level) ... ok
+test_history_written_on_create_and_update (tests.test_acceptance.ModelBehaviour.test_history_written_on_create_and_update) ... ok
+test_merged_requires_target (tests.test_acceptance.ModelBehaviour.test_merged_requires_target) ... ok
+test_status_check_constraint (tests.test_acceptance.ModelBehaviour.test_status_check_constraint) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.266s
+
+OK
